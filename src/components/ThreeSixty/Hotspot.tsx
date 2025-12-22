@@ -9,7 +9,8 @@ interface HotspotProps {
   title: string;
   position: [number, number, number];
   isSelected?: boolean;
-  isPositioningMode?: boolean;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   onDrag?: (position: { x: number; y: number; z: number }) => void;
   onClick?: () => void;
 }
@@ -48,17 +49,16 @@ function AnimatedText({ hovered, title }: { hovered: boolean; title: string }) {
 
 const SPHERE_RADIUS = 4;
 
-function projectToSphere(point: THREE.Vector3, radius: number): THREE.Vector3 {
-  const length = point.length();
-  if (length === 0) return new THREE.Vector3(0, 0, -radius);
-  return point.clone().multiplyScalar(radius / length);
+function projectToSphere(direction: THREE.Vector3, radius: number): THREE.Vector3 {
+  return direction.clone().normalize().multiplyScalar(radius);
 }
 
 export default function Hotspot({
   title,
   position,
   isSelected,
-  isPositioningMode = false,
+  onDragStart,
+  onDragEnd,
   onDrag,
   onClick,
 }: HotspotProps) {
@@ -67,27 +67,63 @@ export default function Hotspot({
   const ringRef = useRef<THREE.MeshBasicMaterial>(null);
   const groupRef = useRef<THREE.Group>(null);
   const isDraggingRef = useRef(false);
-  const lastPropPosition = useRef<[number, number, number]>([...position]);
-  const { camera, raycaster, pointer } = useThree();
+  const { camera, raycaster, pointer, gl } = useThree();
 
-  const canDrag = isPositioningMode && isSelected;
+  const canDrag = isSelected;
 
   useCursor(hovered && !!canDrag, "grab");
   useCursor(isDragging, "grabbing");
 
   useEffect(() => {
-    if (!groupRef.current || isDraggingRef.current) return;
-    
-    const positionChanged =
-      lastPropPosition.current[0] !== position[0] ||
-      lastPropPosition.current[1] !== position[1] ||
-      lastPropPosition.current[2] !== position[2];
-    
-    if (positionChanged) {
-      groupRef.current.position.set(position[0], position[1], position[2]);
-      lastPropPosition.current = [...position];
-    }
-  }, [position[0], position[1], position[2]]);
+    if (!canDrag) return;
+
+    const canvas = gl.domElement;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDraggingRef.current || !groupRef.current) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+      const newPosition = projectToSphere(raycaster.ray.direction, SPHERE_RADIUS);
+
+      groupRef.current.position.copy(newPosition);
+
+      onDrag?.({
+        x: newPosition.x,
+        y: newPosition.y,
+        z: newPosition.z,
+      });
+    };
+
+    const handlePointerUp = () => {
+      if (isDraggingRef.current && groupRef.current) {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        canvas.style.cursor = "";
+        
+        const finalPos = groupRef.current.position;
+        onDrag?.({
+          x: finalPos.x,
+          y: finalPos.y,
+          z: finalPos.z,
+        });
+        onDragEnd?.();
+      }
+    };
+
+    canvas.addEventListener("pointermove", handlePointerMove);
+    canvas.addEventListener("pointerup", handlePointerUp);
+    canvas.addEventListener("pointerleave", handlePointerUp);
+
+    return () => {
+      canvas.removeEventListener("pointermove", handlePointerMove);
+      canvas.removeEventListener("pointerup", handlePointerUp);
+      canvas.removeEventListener("pointerleave", handlePointerUp);
+    };
+  }, [canDrag, camera, raycaster, gl, onDrag, onDragEnd]);
 
   const getOuterRingColor = () => {
     if (isDragging) return "#22c55e";
@@ -101,55 +137,20 @@ export default function Hotspot({
       const pulse = Math.sin(clock.getElapsedTime() * 3) * 0.3 + 0.7;
       ringRef.current.opacity = pulse;
     }
-
-    if (isDraggingRef.current && groupRef.current) {
-      raycaster.setFromCamera(pointer, camera);
-      const direction = raycaster.ray.direction.clone();
-      const newPosition = projectToSphere(direction, SPHERE_RADIUS);
-      
-      groupRef.current.position.copy(newPosition);
-      
-      lastPropPosition.current = [newPosition.x, newPosition.y, newPosition.z];
-      
-      onDrag?.({
-        x: newPosition.x,
-        y: newPosition.y,
-        z: newPosition.z,
-      });
-    }
   });
 
   const handlePointerDown = (e: any) => {
     if (!canDrag) return;
-    e.stopPropagation?.();
+    e.stopPropagation();
     isDraggingRef.current = true;
     setIsDragging(true);
-  };
-
-  const handlePointerUp = () => {
-    if (isDraggingRef.current && groupRef.current) {
-      const finalPos = groupRef.current.position;
-      lastPropPosition.current = [finalPos.x, finalPos.y, finalPos.z];
-      
-      onDrag?.({
-        x: finalPos.x,
-        y: finalPos.y,
-        z: finalPos.z,
-      });
-      
-      isDraggingRef.current = false;
-      setIsDragging(false);
-    }
+    gl.domElement.style.cursor = "grabbing";
+    gl.domElement.setPointerCapture(e.pointerId);
+    onDragStart?.();
   };
 
   return (
-    <group
-      ref={groupRef}
-      position={position}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-    >
+    <group ref={groupRef} position={position}>
       <Billboard>
         <Ring
           args={[0.16, 0.18, 64]}

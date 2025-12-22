@@ -12,7 +12,6 @@ export default function Home() {
   const [files, setFiles] = useState<FileWithHotspots[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [selectedHotspot, setSelectedHotspot] = useState<HotspotData | null>(null);
-  const [isPositioningMode, setIsPositioningMode] = useState(false);
 
   const activeFile = files.find((f) => f.id === activeFileId) ?? null;
 
@@ -153,7 +152,6 @@ export default function Home() {
                 imageUrl={activeFile.imageUrl}
                 hotspots={activeFile.hotspots}
                 selectedHotspotId={selectedHotspot?.id}
-                isPositioningMode={isPositioningMode}
                 onHotspotClick={handleSelectHotspot}
                 onHotspotDrag={handleHotspotDrag}
               />
@@ -177,8 +175,6 @@ export default function Home() {
           onAddHotspot={handleAddHotspot}
           onDeleteHotspot={handleDeleteHotspot}
           onRenameHotspot={handleRenameHotspot}
-          isPositioningMode={isPositioningMode}
-          onTogglePositioningMode={() => setIsPositioningMode((prev) => !prev)}
         />
         {selectedHotspot && (
           <div className="border-t border-gray-700 p-3">

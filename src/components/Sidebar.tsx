@@ -17,6 +17,9 @@ interface SidebarProps {
   onSelectHotspot: (hotspot: HotspotData) => void;
   onAddHotspot: () => void;
   onDeleteHotspot: (id: string) => void;
+  onRenameHotspot: (id: string, newTitle: string) => void;
+  isPositioningMode: boolean;
+  onTogglePositioningMode: () => void;
 }
 
 export default function Sidebar({
@@ -29,11 +32,45 @@ export default function Sidebar({
   onSelectHotspot,
   onAddHotspot,
   onDeleteHotspot,
+  onRenameHotspot,
+  isPositioningMode,
+  onTogglePositioningMode,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<Tab>("files");
 
   return (
     <aside className="flex flex-col h-full bg-gray-800">
+      <div className="p-3 border-b border-gray-700">
+        <button
+          onClick={onTogglePositioningMode}
+          className={`w-full px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2 ${
+            isPositioningMode
+              ? "bg-green-600 text-white"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+          }`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+            />
+          </svg>
+          {isPositioningMode ? "Exit Positioning Mode" : "Positioning Mode"}
+        </button>
+        {isPositioningMode && (
+          <p className="mt-2 text-xs text-gray-400 text-center">
+            Select a hotspot and drag to reposition
+          </p>
+        )}
+      </div>
       <div className="flex border-b border-gray-700">
         <button
           onClick={() => setActiveTab("files")}
@@ -82,6 +119,7 @@ export default function Sidebar({
             onSelect={onSelectHotspot}
             onAdd={onAddHotspot}
             onDelete={onDeleteHotspot}
+            onRename={onRenameHotspot}
           />
         )}
         {activeTab === "sql" && <SqlGenerator files={files} />}

@@ -3,12 +3,35 @@
 import { useState } from "react";
 import { HotspotData } from "@/types/hotspot";
 
+const IMAGE_WIDTH = 6000;
+const IMAGE_HEIGHT = 3000;
+const SPHERE_RADIUS = 4;
+
+function sphereToPixel(x: number, y: number, z: number): { px: number; py: number; pz: number } {
+  const length = Math.sqrt(x * x + y * y + z * z);
+  if (length === 0) return { px: 0, py: 0, pz: 0 };
+
+  const nx = x / length;
+  const ny = y / length;
+  const nz = z / length;
+
+  const phi = Math.acos(ny);
+  const theta = Math.atan2(nx, -nz);
+
+  const px = ((theta + Math.PI) / (2 * Math.PI)) * IMAGE_WIDTH;
+  const py = (phi / Math.PI) * IMAGE_HEIGHT;
+  const pz = 0;
+
+  return { px, py, pz };
+}
+
 interface HotspotListProps {
   hotspots: HotspotData[];
   selectedId: string | null;
   onSelect: (hotspot: HotspotData) => void;
   onAdd: () => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, newTitle: string) => void;
 }
 
 export default function HotspotList({
@@ -17,8 +40,11 @@ export default function HotspotList({
   onSelect,
   onAdd,
   onDelete,
+  onRename,
 }: HotspotListProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   return (
     <div className="space-y-3">
@@ -39,7 +65,43 @@ export default function HotspotList({
                 : "bg-gray-700 hover:bg-gray-600"
             }`}
           >
-            <span className="text-sm text-gray-200">{hotspot.title}</span>
+            {editingId === hotspot.id ? (
+              <input
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => {
+                  if (editValue.trim()) {
+                    onRename(hotspot.id, editValue.trim());
+                  }
+                  setEditingId(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (editValue.trim()) {
+                      onRename(hotspot.id, editValue.trim());
+                    }
+                    setEditingId(null);
+                  } else if (e.key === "Escape") {
+                    setEditingId(null);
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                autoFocus
+                className="text-sm text-white bg-gray-600 px-1 py-0.5 rounded border border-gray-500 outline-none focus:border-blue-500 w-full"
+              />
+            ) : (
+              <span
+                className="text-sm text-gray-200 cursor-text"
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  setEditingId(hotspot.id);
+                  setEditValue(hotspot.title);
+                }}
+              >
+                {hotspot.title}
+              </span>
+            )}
             <div className="flex items-center gap-2">
               <div className="relative">
                 <button
@@ -69,11 +131,21 @@ export default function HotspotList({
                     />
                   </svg>
                 </button>
-                {hoveredId === hotspot.id && (
-                  <div className="absolute right-0 bottom-full mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg whitespace-nowrap z-10">
-                    x: {hotspot.position.x.toFixed(2)}, y: {hotspot.position.y.toFixed(2)}, z: {hotspot.position.z.toFixed(2)}
-                  </div>
-                )}
+                {hoveredId === hotspot.id && (() => {
+                    const pixel = sphereToPixel(hotspot.position.x, hotspot.position.y, hotspot.position.z);
+                    return (
+                      <div className="absolute right-0 bottom-full mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg whitespace-nowrap z-10">
+                        <div className="text-gray-400">Sphere</div>
+                        <div className="text-white">
+                          x: {hotspot.position?.x?.toFixed(2) ?? 'N/A'}, y: {hotspot.position?.y?.toFixed(2) ?? 'N/A'}, z: {hotspot.position?.z?.toFixed(2) ?? 'N/A'}
+                        </div>
+                        <div className="text-gray-400 mt-1">Pixel</div>
+                        <div className="text-white">
+                          x: {pixel.px.toFixed(0)}, y: {pixel.py.toFixed(0)}, z: {pixel.pz.toFixed(0)}
+                        </div>
+                      </div>
+                    );
+                  })()}
               </div>
               <button
                 onClick={(e) => {

@@ -21,7 +21,9 @@ interface ThreeSixtyViewerProps {
   imageUrl: string;
   hotspots?: HotspotData[];
   selectedHotspotId?: string | null;
+  isPositioningMode?: boolean;
   onHotspotClick?: (hotspot: HotspotData) => void;
+  onHotspotDrag?: (hotspotId: string, position: { x: number; y: number; z: number }) => void;
 }
 
 const convertToSpherePosition = (
@@ -56,7 +58,9 @@ export default function ThreeSixtyViewer({
   imageUrl,
   hotspots = [],
   selectedHotspotId,
+  isPositioningMode = false,
   onHotspotClick,
+  onHotspotDrag,
 }: ThreeSixtyViewerProps) {
   const aspectRatioRef = useRef(0);
   const [cursorStyle, setCursorStyle] = useState(VIEWER_CONSTANTS.CURSOR_STYLE);
@@ -109,6 +113,8 @@ export default function ThreeSixtyViewer({
             title={hotspot.title}
             position={pos}
             isSelected={hotspot.id === selectedHotspotId}
+            isPositioningMode={isPositioningMode}
+            onDrag={(position) => onHotspotDrag?.(hotspot.id, position)}
             onClick={() => onHotspotClick?.(hotspot)}
           />
         );
@@ -117,6 +123,7 @@ export default function ThreeSixtyViewer({
       <Suspense fallback={null}>
         <ThreeSixtyImageMesh imageUrl={imageUrl} />
         <OrbitControls
+          enabled={!isPositioningMode}
           enableZoom={true}
           enablePan={false}
           rotateSpeed={-0.5}

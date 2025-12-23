@@ -98,11 +98,12 @@ export default function Hotspot({
       });
     };
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (e: PointerEvent) => {
       if (isDraggingRef.current && groupRef.current) {
         isDraggingRef.current = false;
         setIsDragging(false);
         canvas.style.cursor = "";
+        canvas.releasePointerCapture(e.pointerId);
         
         const finalPos = groupRef.current.position;
         onDrag?.({

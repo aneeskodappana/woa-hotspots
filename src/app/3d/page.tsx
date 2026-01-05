@@ -144,7 +144,7 @@ export default function ThreeDPage() {
   return (
     <div className="flex h-screen bg-gray-900">
       <main className="flex flex-col w-4/5">
-        <Navbar title="WOA Hotspot Mapper" onFileSelect={handleFileSelect} />
+        <Navbar title="WOA Hotspot Mapper - 3D" onFileSelect={handleFileSelect} />
         <div className="flex-1 relative">
           {activeFile ? (
             <div className="absolute inset-0">

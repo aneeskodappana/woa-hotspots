@@ -12,6 +12,7 @@ export default function ThreeDPage() {
   const [files, setFiles] = useState<FileWithHotspots[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [selectedHotspot, setSelectedHotspot] = useState<HotspotData | null>(null);
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
 
   const activeFile = files.find((f) => f.id === activeFileId) ?? null;
 
@@ -150,6 +151,7 @@ export default function ThreeDPage() {
             <div className="absolute inset-0">
               <ThreeSixtyViewer
                 imageUrl={activeFile.imageUrl}
+                referenceImageUrl={referenceImageUrl}
                 hotspots={activeFile.hotspots}
                 selectedHotspotId={selectedHotspot?.id}
                 onHotspotClick={handleSelectHotspot}
@@ -176,6 +178,32 @@ export default function ThreeDPage() {
           onDeleteHotspot={handleDeleteHotspot}
           onRenameHotspot={handleRenameHotspot}
         />
+        {activeFile && (
+          <div className="border-t border-gray-700 p-3">
+            <h3 className="text-sm font-medium text-gray-300 mb-2">Reference Image</h3>
+            <div className="flex flex-col gap-2">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setReferenceImageUrl(URL.createObjectURL(file));
+                  }
+                }}
+                className="text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-700 file:text-gray-300 hover:file:bg-gray-600"
+              />
+              {referenceImageUrl && (
+                <button
+                  onClick={() => setReferenceImageUrl(null)}
+                  className="text-xs text-red-400 hover:text-red-300 text-left"
+                >
+                  Remove reference
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {selectedHotspot && (
           <div className="border-t border-gray-700 p-3">
             <HotspotPositionControls

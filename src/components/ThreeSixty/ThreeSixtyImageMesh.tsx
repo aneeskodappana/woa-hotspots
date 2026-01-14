@@ -18,9 +18,10 @@ const MESH_CONSTANTS = {
 
 interface ThreeSixtyImageMeshProps {
   imageUrl: string;
+  opacity?: number;
 }
 
-export default function ThreeSixtyImageMesh({ imageUrl }: ThreeSixtyImageMeshProps) {
+export default function ThreeSixtyImageMesh({ imageUrl, opacity = 1 }: ThreeSixtyImageMeshProps) {
   const { gl, invalidate } = useThree();
   const [texture, setTexture] = useState<Texture | null>(null);
 
@@ -68,6 +69,8 @@ export default function ThreeSixtyImageMesh({ imageUrl }: ThreeSixtyImageMeshPro
         map={texture}
         side={BackSide}
         toneMapped={false}
+        transparent={opacity < 1}
+        opacity={opacity}
       />
     </mesh>
   );

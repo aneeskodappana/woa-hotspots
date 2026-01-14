@@ -19,6 +19,7 @@ const VIEWER_CONSTANTS = {
 
 interface ThreeSixtyViewerProps {
   imageUrl: string;
+  referenceImageUrl?: string | null;
   hotspots?: HotspotData[];
   selectedHotspotId?: string | null;
   onHotspotClick?: (hotspot: HotspotData) => void;
@@ -55,6 +56,7 @@ const convertToSpherePosition = (
 
 export default function ThreeSixtyViewer({
   imageUrl,
+  referenceImageUrl,
   hotspots = [],
   selectedHotspotId,
   onHotspotClick,
@@ -63,6 +65,8 @@ export default function ThreeSixtyViewer({
   const aspectRatioRef = useRef(0);
   const [cursorStyle, setCursorStyle] = useState(VIEWER_CONSTANTS.CURSOR_STYLE);
   const [isDraggingHotspot, setIsDraggingHotspot] = useState(false);
+  const [viewMode, setViewMode] = useState<"main" | "reference" | "blend">("main");
+  const [referenceOpacity, setReferenceOpacity] = useState(0.5);
 
   const onPointerDown = () => {
     setCursorStyle(VIEWER_CONSTANTS.CURSOR_GRABBING_STYLE);
@@ -90,16 +94,68 @@ export default function ThreeSixtyViewer({
   };
 
   return (
-    <Canvas
-      style={{ cursor: cursorStyle, width: "100%", height: "100%" }}
-      camera={{
-        fov: VIEWER_CONSTANTS.CAMERA_FOV,
-        near: VIEWER_CONSTANTS.CAMERA_NEAR,
-        far: VIEWER_CONSTANTS.CAMERA_FAR,
-        position: [0, 0, 0.1],
-      }}
-      onCreated={onCanvasCreated}
-    >
+    <div className="relative w-full h-full">
+      {referenceImageUrl && (
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-gray-800 bg-opacity-80 rounded-lg p-2">
+          <div className="flex gap-1">
+            <button
+              onClick={() => setViewMode("main")}
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                viewMode === "main"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+            >
+              Main
+            </button>
+            <button
+              onClick={() => setViewMode("reference")}
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                viewMode === "reference"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+            >
+              Reference
+            </button>
+            <button
+              onClick={() => setViewMode("blend")}
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                viewMode === "blend"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              }`}
+            >
+              Blend
+            </button>
+          </div>
+          {viewMode === "blend" && (
+            <div className="flex items-center gap-2 ml-2">
+              <span className="text-xs text-gray-400">Ref</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={referenceOpacity}
+                onChange={(e) => setReferenceOpacity(parseFloat(e.target.value))}
+                className="w-20 h-1 accent-blue-500"
+              />
+              <span className="text-xs text-gray-300 w-8">{Math.round(referenceOpacity * 100)}%</span>
+            </div>
+          )}
+        </div>
+      )}
+      <Canvas
+        style={{ cursor: cursorStyle, width: "100%", height: "100%" }}
+        camera={{
+          fov: VIEWER_CONSTANTS.CAMERA_FOV,
+          near: VIEWER_CONSTANTS.CAMERA_NEAR,
+          far: VIEWER_CONSTANTS.CAMERA_FAR,
+          position: [0, 0, 0.1],
+        }}
+        onCreated={onCanvasCreated}
+      >
       {hotspots.map((hotspot) => {
         const pos = convertToSpherePosition(
           hotspot.position.x,
@@ -121,7 +177,12 @@ export default function ThreeSixtyViewer({
       })}
 
       <Suspense fallback={null}>
-        <ThreeSixtyImageMesh imageUrl={imageUrl} />
+        {(viewMode === "main" || viewMode === "blend") && (
+          <ThreeSixtyImageMesh imageUrl={imageUrl} opacity={viewMode === "blend" ? 1 - referenceOpacity : 1} />
+        )}
+        {referenceImageUrl && (viewMode === "reference" || viewMode === "blend") && (
+          <ThreeSixtyImageMesh imageUrl={referenceImageUrl} opacity={viewMode === "blend" ? referenceOpacity : 1} />
+        )}
         <OrbitControls
           enabled={!isDraggingHotspot}
           enableZoom={true}
@@ -132,5 +193,6 @@ export default function ThreeSixtyViewer({
         />
       </Suspense>
     </Canvas>
+    </div>
   );
 }

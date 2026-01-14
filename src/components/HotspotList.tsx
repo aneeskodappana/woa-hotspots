@@ -25,6 +25,14 @@ function sphereToPixel(x: number, y: number, z: number): { px: number; py: numbe
   return { px, py, pz };
 }
 
+function toSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[()]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
 interface HotspotListProps {
   hotspots: HotspotData[];
   selectedId: string | null;
@@ -45,15 +53,48 @@ export default function HotspotList({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyHotspots = () => {
+    const header = "name,px,py,pz,rx,ry,rz,target";
+    const rows = hotspots.map((hotspot) => {
+      const pixel = sphereToPixel(hotspot.position.x, hotspot.position.y, hotspot.position.z);
+      const slug = toSlug(hotspot.title);
+      return `${slug},${Math.round(pixel.px)},${Math.round(pixel.py)},0,0,0,0,${hotspot.title}`;
+    });
+    const csv = [header, ...rows].join("\n");
+    navigator.clipboard.writeText(csv).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div className="space-y-3">
-      <button
-        onClick={onAdd}
-        className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-      >
-        + Add Hotspot
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={onAdd}
+          className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+        >
+          + Add Hotspot
+        </button>
+        <button
+          onClick={handleCopyHotspots}
+          disabled={hotspots.length === 0}
+          className="px-3 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Copy hotspots as CSV"
+        >
+          {copied ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          )}
+        </button>
+      </div>
       <ul className="space-y-2">
         {hotspots.map((hotspot) => (
           <li
@@ -177,6 +218,7 @@ export default function HotspotList({
             No hotspots available
           </li>
         )}
+        
       </ul>
     </div>
   );
